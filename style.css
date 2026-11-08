@@ -1,0 +1,122 @@
+.ruinflect-settings .inline-drawer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ruinflect-subtitle,
+.ruinflect-hint,
+.ruinflect-status {
+    opacity: 0.8;
+}
+
+.ruinflect-warning {
+    color: var(--warning, #ff9800);
+}
+
+.ruinflect-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.ruinflect-num {
+    width: 5em;
+}
+
+.ruinflect-person,
+.ruinflect-preview,
+.ruinflect-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ruinflect-name {
+    font-weight: bold;
+    flex: 1;
+}
+
+.ruinflect-forms {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ruinflect-form-row {
+    display: grid;
+    grid-template-columns: 7em 1fr auto;
+    align-items: center;
+    gap: 6px;
+}
+
+.ruinflect-form-row .text_pole {
+    margin: 0;
+}
+
+.ruinflect-case {
+    font-size: 0.9em;
+    opacity: 0.85;
+}
+
+.ruinflect-word {
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+.ruinflect-word::before {
+    content: "●";
+    margin-right: 4px;
+}
+
+.ruinflect-src-dictionary::before { color: #4caf50; }
+.ruinflect-src-guess::before { color: #ff9800; }
+.ruinflect-src-manual::before { color: #2196f3; }
+.ruinflect-src-pending::before,
+.ruinflect-src-latin::before { color: #9e9e9e; }
+
+.ruinflect-out {
+    white-space: pre-wrap;
+    padding: 6px;
+    min-height: 1.5em;
+    border: 1px dashed var(--SmartThemeBorderColor);
+    border-radius: 6px;
+}
+
+.ruinflect-out:empty {
+    display: none;
+}
+
+.ruinflect-code {
+    display: block;
+    max-height: 8em;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-size: 0.8em;
+}
+
+.ruinflect-details > summary {
+    cursor: pointer;
+}
+
+.ruinflect-help {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+}
+
+.ruinflect-help td {
+    padding: 2px 4px;
+    vertical-align: top;
+    border-bottom: 1px solid var(--SmartThemeBorderColor);
+}
+
+.ruinflect-native {
+    margin: 4px 0;
+}
+
+.ruinflect-native select {
+    width: auto;
+    flex: 1;
+}

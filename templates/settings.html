@@ -1,0 +1,87 @@
+<div class="ruinflect-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>RuInflect</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <small class="ruinflect-subtitle" data-i18n="Russian cases and gender for the user and character names">Russian cases and gender for the user and character names</small>
+
+            <label class="checkbox_label" for="ruinflect_enabled">
+                <input id="ruinflect_enabled" type="checkbox" />
+                <span data-i18n="Enabled">Enabled</span>
+            </label>
+            <small id="ruinflect_engine_warning" class="ruinflect-warning displayNone"></small>
+
+            <hr class="sysHR" />
+            <b data-i18n="Persona">Persona</b>
+            <div id="ruinflect_persona_slot"></div>
+
+            <hr class="sysHR" />
+            <b data-i18n="Character">Character</b>
+            <div class="ruinflect-row displayNone" id="ruinflect_member_row">
+                <label for="ruinflect_member" data-i18n="Group member">Group member</label>
+                <select id="ruinflect_member" class="text_pole flex1"></select>
+            </div>
+            <div id="ruinflect_char_slot"></div>
+
+            <hr class="sysHR" />
+            <b data-i18n="Preview">Preview</b>
+            <div id="ruinflect_preview_slot"></div>
+
+            <hr class="sysHR" />
+            <b data-i18n="Hint for the model">Hint for the model</b>
+            <label class="checkbox_label" for="ruinflect_hint_enabled">
+                <input id="ruinflect_hint_enabled" type="checkbox" />
+                <span data-i18n="Tell the model the gender of the user and the character">Tell the model the gender of the user and the character</span>
+            </label>
+            <div class="ruinflect-row">
+                <select id="ruinflect_hint_position" class="text_pole flex1">
+                    <option value="0" data-i18n="After the story string">After the story string</option>
+                    <option value="1" data-i18n="In chat at depth">In chat at depth</option>
+                    <option value="2" data-i18n="Before the prompt">Before the prompt</option>
+                </select>
+                <input id="ruinflect_hint_depth" class="text_pole ruinflect-num" type="number" min="0" max="100" step="1" title="Depth" data-i18n="[title]Depth" />
+                <select id="ruinflect_hint_role" class="text_pole">
+                    <option value="0" data-i18n="System">System</option>
+                    <option value="1" data-i18n="User">User</option>
+                    <option value="2" data-i18n="Assistant">Assistant</option>
+                </select>
+            </div>
+            <details class="ruinflect-details">
+                <summary data-i18n="Edit the text">Edit the text</summary>
+                <small class="ruinflect-hint" data-i18n="{who}, {rod} and {examples} are filled from the gender, the user and character names are substituted by SillyTavern. An empty template skips that part.">{who}, {rod} and {examples} are filled from the gender, the user and character names are substituted by SillyTavern. An empty template skips that part.</small>
+                <textarea id="ruinflect_hint_user" class="text_pole textarea_compact" rows="2"></textarea>
+                <textarea id="ruinflect_hint_char" class="text_pole textarea_compact" rows="2"></textarea>
+                <input id="ruinflect_hint_wrapper" class="text_pole" type="text" />
+                <div class="ruinflect-row">
+                    <div id="ruinflect_hint_reset" class="menu_button menu_button_icon">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span data-i18n="Reset">Reset</span>
+                    </div>
+                </div>
+                <small data-i18n="Current hint:">Current hint:</small>
+                <code id="ruinflect_hint_current" class="ruinflect-code"></code>
+            </details>
+
+            <hr class="sysHR" />
+            <details class="ruinflect-details">
+                <summary data-i18n="Macro reference">Macro reference</summary>
+                <div id="ruinflect_help_slot"></div>
+            </details>
+
+            <hr class="sysHR" />
+            <div class="ruinflect-row">
+                <div id="ruinflect_clear_cache" class="menu_button menu_button_icon">
+                    <i class="fa-solid fa-broom"></i>
+                    <span data-i18n="Clear cache">Clear cache</span>
+                </div>
+                <label class="checkbox_label" for="ruinflect_debug">
+                    <input id="ruinflect_debug" type="checkbox" />
+                    <span data-i18n="Debug log">Debug log</span>
+                </label>
+            </div>
+            <small id="ruinflect_status" class="ruinflect-status"></small>
+        </div>
+    </div>
+</div>
