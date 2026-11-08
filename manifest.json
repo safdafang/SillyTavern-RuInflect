@@ -1,0 +1,16 @@
+{
+    "display_name": "RuInflect: падежи и род для {{user}} и {{char}}",
+    "loading_order": 101,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "safdafang",
+    "version": "0.1.0",
+    "homePage": "https://github.com/safdafang/SillyTavern-RuInflect",
+    "auto_update": true,
+    "minimum_client_version": "1.16.0",
+    "i18n": {
+        "ru-ru": "i18n/ru-ru.json"
+    }
+}
