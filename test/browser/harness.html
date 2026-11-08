@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>RuInflect harness</title>
+<style>
+    :root { --SmartThemeBorderColor: #555; --black30a: rgba(0,0,0,.3); --SmartThemeQuoteColor: #e18a24; --SmartThemeBodyColor: #ddd; }
+    body { background: #222; color: #ddd; font: 14px sans-serif; }
+    .displayNone { display: none !important; }
+    .text_pole { background: #111; color: #ddd; border: 1px solid #555; border-radius: 4px; padding: 3px 5px; margin: 2px 0; box-sizing: border-box; }
+    textarea.text_pole { width: 100%; }
+    .menu_button { display: inline-flex; gap: 4px; align-items: center; border: 1px solid #555; border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+    .checkbox_label { display: flex; gap: 6px; align-items: center; }
+    .inline-drawer-header { display: flex; justify-content: space-between; }
+    .sysHR { border-color: #444; width: 100%; }
+    #extensions_settings2 { display: flex; gap: 16px; align-items: flex-start; }
+    #extensions_settings2 > div { width: 420px; }
+</style>
+<script>
+    window.__logs = [];
+    for (const level of ['log', 'warn', 'error', 'debug']) {
+        const orig = console[level].bind(console);
+        console[level] = (...a) => { window.__logs.push([level, a.map(String).join(' ')]); orig(...a); };
+    }
+    window.addEventListener('error', (e) => window.__logs.push(['error', 'uncaught ' + e.message]));
+    window.addEventListener('unhandledrejection', (e) => window.__logs.push(['error', 'unhandled ' + e.reason]));
+
+    const ready = [];
+    window.jQuery = (fn) => { if (typeof fn === 'function') ready.push(fn); };
+    window.$ = window.jQuery;
+    window.toastr = { info: (...a) => console.log('toast', ...a), warning: (...a) => console.log('toast', ...a), error: (...a) => console.log('toast', ...a), success: (...a) => console.log('toast', ...a) };
+
+    // A small stand-in for the new macro engine: nested {{macro::a::b}} resolved inside out.
+    const macros = new Map();
+    const registry = {
+        registerMacro(name, options) {
+            if (!/^[a-zA-Z][\w-_]*$/.test(name)) throw new Error('bad name ' + name);
+            const def = { name, ...options };
+            macros.set(name.toLowerCase(), def);
+            for (const a of options.aliases ?? []) macros.set(a.alias.toLowerCase(), { ...def, aliasOf: name });
+            return def;
+        },
+        unregisterMacro(name) { return macros.delete(name.toLowerCase()); },
+        hasMacro(name) { return macros.has(name.toLowerCase()); },
+        getAllMacros() { return [...macros.values()]; },
+    };
+    function evaluate(text, env) {
+        let prev;
+        do {
+            prev = text;
+            text = text.replace(/\{\{([a-zA-Z][\w-]*)((?:::[^{}]*?)*)\}\}/g, (all, name, rest) => {
+                if (name === 'user') return env.names.user;
+                if (name === 'char') return env.names.char;
+                const d = macros.get(name.toLowerCase());
+                if (!d) return all;
+                const args = rest ? rest.split('::').slice(1) : [];
+                return String(d.handler({ name, args, unnamedArgs: args, env, rawOriginal: all, warn: (m) => console.warn('[macro warn]', name, m) }));
+            });
+        } while (text !== prev);
+        return text;
+    }
+
+    const events = {};
+    const H = window.__harness = {
+        name1: 'Анна',
+        characterId: 0,
+        groupId: null,
+        prompts: {},
+        written: [],
+        engine: true,
+        fire: async (type, ...a) => { for (const fn of events[type] ?? []) await fn(...a); },
+    };
+    const characters = [
+        { name: 'Элдрин', avatar: 'eldrin.png', first_mes: '{{char}} подходит к {{uc::дт}}. — Ты {{ug::пришёл}}!', data: { extensions: { ruinflect: { gender: 'm' } }, alternate_greetings: [] } },
+        { name: 'Морвенна', avatar: 'morvenna.png', first_mes: '', data: { extensions: { ruinflect: { gender: 'f' } } } },
+    ];
+    const extensionSettings = {};
+    const powerUserSettings = { personas: { 'anna.png': 'Анна', 'ivan.png': 'Иван' }, default_persona: null, get experimental_macro_engine() { return H.engine; } };
+    const event_types = Object.fromEntries(['APP_READY', 'CHAT_CHANGED', 'PERSONA_CHANGED', 'GROUP_UPDATED', 'CHARACTER_EDITED', 'CHARACTER_RENAMED', 'SETTINGS_UPDATED', 'CHARACTER_PAGE_LOADED', 'GROUP_MEMBER_DRAFTED', 'MESSAGE_RECEIVED', 'CHARACTER_MESSAGE_RENDERED', 'MESSAGE_UPDATED', 'MESSAGE_SWIPED', 'WORLDINFO_ENTRIES_LOADED', 'WORLDINFO_UPDATED'].map((k) => [k, k.toLowerCase()]));
+    const legacy = new Map();
+    const chat = [];
+    H.chat = chat;
+    H.merged = [];
+    H.saves = 0;
+    H.popups = [];
+    const realFetch = window.fetch.bind(window);
+    window.fetch = async (url, opts) => {
+        if (String(url).includes('/api/characters/merge-attributes')) {
+            H.merged.push(JSON.parse(opts.body));
+            return new Response('', { status: 200 });
+        }
+        return realFetch(url, opts);
+    };
+    class Popup {
+        constructor(content, type, text, options) { this.content = content; this.options = options; }
+        async show() { H.popups.push(this.content.textContent); return H.popupAnswer ?? 1; }
+    }
+    Popup.show = { confirm: async () => true };
+    H.render = (id) => {
+        let el = document.querySelector('#chat .mes[mesid="' + id + '"]');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'mes';
+            el.setAttribute('mesid', String(id));
+            el.innerHTML = '<div class="mes_text"></div>';
+            document.getElementById('chat').append(el);
+        }
+        el.querySelector('.mes_text').innerHTML = '<p>' + chat[id].mes.replace(/\*([^*]+)\*/g, '<em>$1</em>') + '</p>';
+    };
+    window.SillyTavern = {
+        getContext: () => ({
+            get name1() { return H.name1; },
+            get name2() { return characters[H.characterId]?.name ?? ''; },
+            characters,
+            get characterId() { return H.characterId; },
+            get groupId() { return H.groupId; },
+            groups: [{ id: 'g1', members: ['eldrin.png', 'morvenna.png'], disabled_members: [] }],
+            chat,
+            saveChat: async () => { H.saves++; },
+            updateMessageBlock: (id) => H.render(id),
+            Popup,
+            POPUP_TYPE: { CONFIRM: 2 },
+            POPUP_RESULT: { AFFIRMATIVE: 1, NEGATIVE: 0 },
+            getRequestHeaders: () => ({ 'Content-Type': 'application/json' }),
+            getOneCharacter: async () => { H.reloaded = (H.reloaded ?? 0) + 1; },
+            chatMetadata: {},
+            extensionSettings,
+            powerUserSettings,
+            saveSettingsDebounced: () => {},
+            eventSource: { on: (type, fn) => (events[type] ??= []).push(fn) },
+            eventTypes: event_types,
+            event_types,
+            t: (s, ...v) => s.reduce((a, x, i) => a + x + (i < v.length ? v[i] : ''), ''),
+            renderExtensionTemplateAsync: async (path, name) => (await fetch(`/scripts/extensions/${path}/${name}.html`)).text(),
+            macros: { register: (n, o) => registry.registerMacro(n, o), registry },
+            registerMacro: (k, v) => legacy.set(k, v),
+            unregisterMacro: (k) => legacy.delete(k),
+            setExtensionPrompt: (key, value, position, depth, scan, role) => { H.prompts[key] = { value, position, depth, role }; },
+            substituteParams: (text, n1, n2) => H.engine
+                ? evaluate(text, { names: { user: n1 ?? H.name1, char: n2 ?? characters[H.characterId]?.name ?? '' } })
+                : text.replace(/\{\{([\w-]+)\}\}/g, (all, k) => (legacy.has(k) ? legacy.get(k)() : k === 'user' ? H.name1 : k === 'char' ? characters[H.characterId].name : all)),
+            writeExtensionField: async (id, key, value) => {
+                H.written.push([id, key, value]);
+                characters[id].data.extensions[key] = value;
+            },
+            getWorldInfoNames: () => [],
+            SlashCommandParser: { addCommandObject: (o) => { (H.commands ??= {})[o.name] = o; } },
+            SlashCommand: { fromProps: (p) => p },
+            SlashCommandArgument: { fromProps: (p) => p },
+            SlashCommandNamedArgument: { fromProps: (p) => p },
+            ARGUMENT_TYPE: { STRING: 'string' },
+        }),
+        libs: {},
+    };
+    H.evaluate = (text, user, char) => window.SillyTavern.getContext().substituteParams(text, user, char);
+    H.legacy = legacy;
+    H.macros = macros;
+    window.addEventListener('DOMContentLoaded', async () => {
+        const list = new URLSearchParams(location.search).get('ext')?.split(',') ?? ['SillyTavern-RuInflect'];
+        if (new URLSearchParams(location.search).get('legacy')) H.engine = false;
+        for (const name of list) document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet", href: `/scripts/extensions/third-party/${name}/style.css` }));
+        for (const name of list) await import(`/scripts/extensions/third-party/${name}/index.js`);
+        for (const fn of ready) fn();
+        H.started = true;
+    });
+</script>
+</head>
+<body>
+<div id="persona_controls"><h5>Анна</h5></div>
+<div id="chat"></div>
+<div id="extensions_settings2"></div>
+</body>
+</html>
