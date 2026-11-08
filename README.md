@@ -45,6 +45,9 @@ It hurts most in `first_mes`, which the player sees verbatim.
 * **Manual forms.** Any case can be corrected by hand. A character's forms are stored in the card and are
   exported with it.
 * **Preview.** Text with macros and the result, including «as for a male/female player».
+* **Gender error detector.** Underlines «ты пришёл» in a model reply when the player is female; a click fixes it.
+* **Card converter.** Finds `{{user}}` in oblique cases and gendered words and suggests macros, with a diff,
+  checkboxes and a backup.
 
 ## Installation
 
@@ -148,6 +151,46 @@ follows the character that is about to reply. Nothing is added when no gender is
 /ruinflect-gender char
 ```
 
+## Gender error detector
+
+Models often call a female player «ты пришёл». RuInflect checks every model reply and puts a dashed underline
+under likely errors; the tooltip says «Fix to „пришла“» and a click replaces the word in the message and saves
+the chat. It checks:
+
+* «ты» + (at most one particle or adverb) + a past tense verb or a short form in the singular whose gender
+  differs from the user's: «ты пришёл», «ты не знал», «ты наконец проснулся»;
+* the user's name at the start of a sentence + the same: «Анна пришёл»;
+* optionally «я» + the same, against the character's gender. Who is speaking is often unclear (a character may
+  quote someone), so this is off by default and works only in one-on-one chats.
+
+The detector is conservative: a noun, a pronoun, a comma or a conjunction between the subject and the verb
+skips the phrase («ты знал, что она пришла», «ты и он пришли», «ты, говорят, пришёл»). Homonyms are skipped
+too: «прав», «рад», «замер» can be nouns. «Fix them automatically» (off by default) corrects a reply before it
+is shown. Without a click or that setting messages are never changed.
+
+**Accuracy** on [`test/fixtures/gender-detector.jsonl`](test/fixtures/gender-detector.jsonl): 177 hand-labelled
+phrases, 83 with errors and 94 traps without. 66 of 90 errors found, no false alarms: **precision 100%,
+recall 73%**. Misses are mostly homonyms («ты прав», «ты готов»), a second verb after «и» («вздохнул и сел»)
+and words between «ты» and the verb («ты меня ждал»).
+
+## Card converter
+
+**Make the card adaptive** (in the extension settings and the <kbd>文A</kbd> button in the character panel)
+scans `description`, `personality`, `scenario`, `first_mes`, `alternate_greetings`, `mes_example`,
+`system_prompt` and `post_history_instructions` (never `name` or `creator_notes`) for:
+
+* `{{user}}` and `{{char}}` after prepositions: «к {{user}}» → `к {{uc::дт}}`, «у {{user}}» → `у {{uc::рд}}`,
+  «с {{user}}» → `с {{uc::тв}}`, «о {{user}}» → `о {{uc::пр}}`;
+* after verbs that take a person object: «видит {{user}}» → `видит {{uc::вн}}`, «помогает {{user}}» →
+  `помогает {{uc::дт}}`. Verbs of speech and the inversion after a line of dialogue («— Привет, — улыбается
+  {{char}}») are skipped: the name is in the nominative there;
+* endings glued to the macro: «{{user}}у», «с {{char}}ом»;
+* gendered verbs and short forms after «ты» and `{{user}}`: «ты пришёл» → `ты {{ug::пришёл}}`.
+
+The changes are listed with context and a checkbox each. Ambiguous ones («на {{user}}», «в {{user}}»,
+«за {{user}}» may need different cases) start unchecked. Before saving, the current fields are copied to
+`data.extensions.ruinflect.backup`, and **Restore** brings them back.
+
 ## For card authors
 
 Players without RuInflect see `{{uc::дт}}` as plain text. So:
@@ -173,8 +216,12 @@ Players without RuInflect see `{{uc::дт}}` as plain text. So:
   the gender or fix a form by hand.
 * **Automatic gender** works for dictionary words only. In a phrase of several words only verbs, short
   forms and «сам» change; full adjectives stay («надел новый костюм»).
-* **A disabled extension** unregisters its macros: `{{uc::дт}}` stays as text, the hint is off, nothing else in
-  SillyTavern changes.
+* **The detector is conservative.** It catches about three quarters of the errors in simple constructions and
+  stays silent when unsure. It takes a character's «ты» to another NPC for the player.
+* **The converter suggests, it does not decide.** The case after «на», «в», «за» and after transitive verbs
+  depends on the meaning, so check those.
+* **A disabled extension** unregisters its macros: `{{uc::дт}}` stays as text, the hint and the detector are
+  off, nothing else in SillyTavern changes.
 
 ## Compatibility
 

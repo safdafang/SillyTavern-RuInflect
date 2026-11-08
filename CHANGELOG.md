@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 (2026-11-08)
+
+* Gender error detector: likely errors in model replies («ты пришёл» to a female player, «Анна пришёл», optionally
+  «я» against the character) get a dashed underline and are fixed on click; optional automatic fixing.
+  177 hand-labelled phrases: precision 100%, recall 73%.
+* Card converter: suggests `{{uc::…}}`/`{{cc::…}}` after prepositions and verbs and for glued endings, and
+  `{{ug::…}}` for gendered words after «ты» and `{{user}}`; diff with checkboxes, backup and restore.
+
 ## 0.1.0 (2026-11-08)
 
 First release.
