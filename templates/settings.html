@@ -24,6 +24,16 @@
                 <select id="ruinflect_member" class="text_pole flex1"></select>
             </div>
             <div id="ruinflect_char_slot"></div>
+            <div class="ruinflect-row">
+                <div id="ruinflect_convert" class="menu_button menu_button_icon" title="Suggests case and gender macros for the current card" data-i18n="[title]Suggests case and gender macros for the current card">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span data-i18n="Make the card adaptive">Make the card adaptive</span>
+                </div>
+                <div id="ruinflect_restore" class="menu_button menu_button_icon">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span data-i18n="Restore">Restore</span>
+                </div>
+            </div>
 
             <hr class="sysHR" />
             <b data-i18n="Preview">Preview</b>
@@ -63,6 +73,21 @@
                 <small data-i18n="Current hint:">Current hint:</small>
                 <code id="ruinflect_hint_current" class="ruinflect-code"></code>
             </details>
+
+            <hr class="sysHR" />
+            <b data-i18n="Gender errors in replies">Gender errors in replies</b>
+            <label class="checkbox_label" for="ruinflect_det_enabled" title="Underlines «ты пришёл» when the user is female, and similar. Click a word to fix it." data-i18n="[title]Underlines «ты пришёл» when the user is female, and similar. Click a word to fix it.">
+                <input id="ruinflect_det_enabled" type="checkbox" />
+                <span data-i18n="Highlight likely gender errors">Highlight likely gender errors</span>
+            </label>
+            <label class="checkbox_label" for="ruinflect_det_autofix">
+                <input id="ruinflect_det_autofix" type="checkbox" />
+                <span data-i18n="Fix them automatically">Fix them automatically</span>
+            </label>
+            <label class="checkbox_label" for="ruinflect_det_first" title="«я пришла» from a male character. Who speaks is often unclear, so this is off by default and works only in one-on-one chats." data-i18n="[title]«я пришла» from a male character. Who speaks is often unclear, so this is off by default and works only in one-on-one chats.">
+                <input id="ruinflect_det_first" type="checkbox" />
+                <span data-i18n="Also check «я» against the character">Also check «я» against the character</span>
+            </label>
 
             <hr class="sysHR" />
             <details class="ruinflect-details">

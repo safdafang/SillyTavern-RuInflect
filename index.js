@@ -12,9 +12,11 @@ import { FormsTable } from './src/precompute.js';
 import {
     CARD_KEY, MODULE, currentAvatar, getCardRecord, getPersonaRecord, setPersonaRecord, specFor, toCardPayload,
 } from './src/storage.js';
+import { createDetector } from './src/ui-detector.js';
+import { openConverter, restoreBackup } from './src/ui-converter.js';
 
 const LOG = '[RuInflect]';
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const BASE_URL = new URL('.', import.meta.url);
 // Works for both per-user (data/<user>/extensions) and global (third-party) installs.
 const EXT_PATH = decodeURIComponent(new URL(import.meta.url).pathname)
@@ -30,6 +32,11 @@ const DEFAULTS = Object.freeze({
         userTemplate: DEFAULT_USER_TEMPLATE,
         charTemplate: DEFAULT_CHAT_TEMPLATE,
         wrapper: DEFAULT_WRAPPER,
+    },
+    detector: {
+        enabled: true,
+        autofix: false,
+        firstPerson: false,
     },
     debug: false,
     personas: {},
@@ -458,6 +465,16 @@ function renderNativeControls() {
     if (select && document.activeElement !== select) select.value = getPersonaRecord(getSettings(), avatarId())?.gender ?? '';
 }
 
+function addCharacterButton() {
+    const bar = document.querySelector('#avatar_controls .form_create_bottom_buttons_block');
+    if (!bar || $id('ruinflect_char_button')) return;
+    const btn = element('div', 'menu_button fa-solid fa-language');
+    btn.id = 'ruinflect_char_button';
+    btn.title = t`RuInflect: make the card adaptive`;
+    btn.addEventListener('click', () => runConverter());
+    $id('delete_button') ? bar.insertBefore(btn, $id('delete_button')) : bar.append(btn);
+}
+
 function renderPreview() {
     const input = $id('ruinflect_preview_text');
     const out = $id('ruinflect_preview_out');
@@ -517,6 +534,21 @@ function updateStatus() {
     el.textContent = `${state}${shared} · ${t`forms`}: ${table.size}${engine}`;
 }
 
+let detector = null;
+
+async function runConverter() {
+    const c = ctx();
+    const id = Number(c.characterId);
+    if (c.groupId || !Number.isInteger(id) || !c.characters[id]) return toastr.info(t`Open a character first (not a group).`, 'RuInflect');
+    try {
+        const m = await ensureMorph();
+        await openConverter({ ctx: c, id, morph: m, t });
+    } catch (e) {
+        console.error(LOG, e);
+        toastr.error(String(e), 'RuInflect');
+    }
+}
+
 function bindCheckbox(id, get, set, after) {
     const el = $id(id);
     el.checked = !!get();
@@ -542,6 +574,9 @@ async function addSettingsUi() {
 
     bindCheckbox('ruinflect_enabled', () => s.enabled, (v) => { s.enabled = v; }, () => applyEnabled());
     bindCheckbox('ruinflect_debug', () => s.debug, (v) => { s.debug = v; });
+    bindCheckbox('ruinflect_det_enabled', () => s.detector.enabled, (v) => { s.detector.enabled = v; }, () => detector?.rescan());
+    bindCheckbox('ruinflect_det_autofix', () => s.detector.autofix, (v) => { s.detector.autofix = v; }, () => detector?.rescan());
+    bindCheckbox('ruinflect_det_first', () => s.detector.firstPerson, (v) => { s.detector.firstPerson = v; }, () => detector?.rescan());
     bindCheckbox('ruinflect_hint_enabled', () => s.hint.enabled, (v) => { s.hint.enabled = v; }, updateHint);
 
     const bindValue = (id, key, parse = (v) => v) => {
@@ -571,6 +606,19 @@ async function addSettingsUi() {
     $id('ruinflect_member').addEventListener('change', () => {
         renderPeople();
         renderPreview();
+    });
+
+    $id('ruinflect_convert').addEventListener('click', () => runConverter());
+    $id('ruinflect_restore').addEventListener('click', async () => {
+        const c = ctx();
+        const id = Number(c.characterId);
+        if (c.groupId || !c.characters[id]) return toastr.info(t`Open a character first (not a group).`, 'RuInflect');
+        try {
+            await restoreBackup({ ctx: c, id, t });
+        } catch (e) {
+            console.error(LOG, e);
+            toastr.error(String(e), 'RuInflect');
+        }
     });
 
     let typing = null;
@@ -672,6 +720,7 @@ function applyEnabled() {
     }
     updateHint();
     renderNativeControls();
+    detector?.rescan();
     updateStatus();
 }
 
@@ -701,6 +750,16 @@ jQuery(async () => {
         }).catch(() => {});
     }
 
+    detector = createDetector({
+        ctx,
+        getSettings,
+        getMorph: morphNow,
+        getGender: (role, name) => macroDeps.gender(role, name),
+        isGroup: () => !!ctx().groupId,
+        t,
+        debug,
+    });
+
     const ev = c.eventTypes ?? c.event_types;
     const on = (name, fn) => ev[name] && c.eventSource.on(ev[name], (...a) => {
         try {
@@ -718,16 +777,24 @@ jQuery(async () => {
     on('APP_READY', () => getSettings().enabled && ensureMorph().then(rebuild).catch(() => {}));
     on('CHAT_CHANGED', () => {
         reload();
+        addCharacterButton();
+        detector.rescan();
     });
     on('PERSONA_CHANGED', reload);
     on('GROUP_UPDATED', reload);
     on('CHARACTER_EDITED', reload);
     on('CHARACTER_RENAMED', reload);
     on('SETTINGS_UPDATED', reload);
+    on('CHARACTER_PAGE_LOADED', addCharacterButton);
+    on('MESSAGE_RECEIVED', (id) => detector.onReceived(id));
+    on('CHARACTER_MESSAGE_RENDERED', (id) => detector.onRendered(id));
+    on('MESSAGE_UPDATED', (id) => detector.onRendered(id));
+    on('MESSAGE_SWIPED', (id) => setTimeout(() => detector.onRendered(id), 0));
     on('GROUP_MEMBER_DRAFTED', (chId) => {
         speakingId = Number(chId);
         updateHint();
     });
 
+    addCharacterButton();
     log(`v${VERSION} loaded from ${EXT_PATH}`);
 });

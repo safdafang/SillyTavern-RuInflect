@@ -120,3 +120,47 @@
     width: auto;
     flex: 1;
 }
+
+.ruinflect-err {
+    text-decoration: underline dashed #f44336;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.ruinflect-convert {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+}
+
+.ruinflect-diff-field {
+    margin: 8px 0 2px;
+}
+
+.ruinflect-diff-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 0.9em;
+}
+
+.ruinflect-diff {
+    flex: 1;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.ruinflect-diff del {
+    color: #f44336;
+}
+
+.ruinflect-diff ins {
+    color: #4caf50;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.ruinflect-diff-low {
+    color: #ff9800;
+}

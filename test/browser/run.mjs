@@ -16,7 +16,7 @@ async function open(query) {
     const dawg = [];
     page.on('request', (r) => r.url().endsWith('words.dawg') && dawg.push(r.url()));
     await page.goto(base + query);
-    await page.waitForFunction(() => window.__harness?.started && window.__logs.some(([, m]) => m.includes('[RuInflect] v0.1.0 loaded')));
+    await page.waitForFunction(() => window.__harness?.started && window.__logs.some(([, m]) => m.includes('[RuInflect] v0.2.0 loaded')));
     await page.waitForFunction(() => document.getElementById('ruinflect_status')?.textContent.includes('словари загружены')
         || document.getElementById('ruinflect_status')?.textContent.includes('dictionaries loaded'), null, { timeout: 30000 });
     await page.waitForTimeout(300);
@@ -120,7 +120,78 @@ async function check(name, fn) {
     await page.close();
 }
 
-// 2. Legacy engine
+// 2. Phase 2: detector and converter
+{
+    const { page } = await open('?ext=SillyTavern-RuInflect');
+    await page.selectOption('#ruinflect_persona_slot select[data-role="gender"]', 'f');
+    await check('detector: underlines and fixes on click', async () => {
+        await page.evaluate(async () => {
+            const H = window.__harness;
+            H.chat.push({ name: 'Элдрин', is_user: false, mes: 'Ты пришёл вовремя. Он ушёл, а ты *опоздал*.', swipes: ['x'], swipe_id: 0 });
+            H.render(0);
+            await H.fire('character_message_rendered', 0);
+        });
+        const marks = await page.$$eval('.ruinflect-err', (els) => els.map((e) => [e.textContent, e.title]));
+        assert.deepEqual(marks, [['пришёл', 'Fix to «пришла»'], ['опоздал', 'Fix to «опоздала»']]);
+        await page.click('.ruinflect-err >> nth=1');
+        await page.waitForTimeout(700);
+        const state = await page.evaluate(() => ({ mes: window.__harness.chat[0].mes, swipe: window.__harness.chat[0].swipes[0], saves: window.__harness.saves }));
+        assert.deepEqual(state, { mes: 'Ты пришёл вовремя. Он ушёл, а ты *опоздала*.', swipe: 'Ты пришёл вовремя. Он ушёл, а ты *опоздала*.', saves: 1 });
+        assert.deepEqual(await page.$$eval('.ruinflect-err', (els) => els.map((e) => e.textContent)), ['пришёл']);
+    });
+    await check('detector: nothing changes without a click', async () => {
+        const mes = await page.evaluate(async () => {
+            const H = window.__harness;
+            H.chat.push({ name: 'Элдрин', is_user: false, mes: 'Ты устал?' });
+            await H.fire('message_received', 1);
+            return H.chat[1].mes;
+        });
+        assert.equal(mes, 'Ты устал?');
+    });
+    await check('detector: automatic fixing when enabled', async () => {
+        await page.check('#ruinflect_det_autofix');
+        const mes = await page.evaluate(async () => {
+            const H = window.__harness;
+            H.chat.push({ name: 'Элдрин', is_user: false, mes: 'Ты устал? Ты знал, что она пришла.' });
+            await H.fire('message_received', 2);
+            return H.chat[2].mes;
+        });
+        assert.equal(mes, 'Ты устала? Ты знала, что она пришла.');
+        await page.uncheck('#ruinflect_det_autofix');
+    });
+    await check('converter: diff, backup and save', async () => {
+        await page.evaluate(() => {
+            const ch = SillyTavern.getContext().characters[0];
+            ch.description = ch.data.description = 'Элдрин заботится о {{user}}.';
+            ch.first_mes = ch.data.first_mes = '{{char}} подходит к {{user}}. — Ты пришёл!';
+            ch.data.alternate_greetings = ['Он смотрит на {{user}}.'];
+        });
+        await page.click('#ruinflect_convert');
+        await page.waitForFunction(() => window.__harness.merged.length === 1);
+        const popup = await page.evaluate(() => window.__harness.popups.at(-1));
+        assert.ok(popup.includes('{{uc::пр}}'), popup);
+        assert.ok(popup.includes('{{ug::пришёл}}'), popup);
+        const merged = await page.evaluate(() => window.__harness.merged[0]);
+        assert.equal(merged.avatar, 'eldrin.png');
+        assert.equal(merged.first_mes, '{{char}} подходит к {{uc::дт}}. — Ты {{ug::пришёл}}!');
+        assert.equal(merged.data.description, 'Элдрин заботится о {{uc::пр}}.');
+        // «на {{user}}» is uncertain and starts unchecked.
+        assert.deepEqual(merged.data.alternate_greetings, ['Он смотрит на {{user}}.']);
+        assert.ok(!('creator_notes' in merged.data));
+        const backup = await page.evaluate(() => window.__harness.written.find(([, , v]) => v.backup)?.[2].backup.fields.first_mes);
+        assert.equal(backup, '{{char}} подходит к {{user}}. — Ты пришёл!');
+    });
+    await check('converter: restore from the backup', async () => {
+        await page.click('#ruinflect_restore');
+        await page.waitForFunction(() => window.__harness.merged.length === 2);
+        const merged = await page.evaluate(() => window.__harness.merged[1]);
+        assert.equal(merged.first_mes, '{{char}} подходит к {{user}}. — Ты пришёл!');
+    });
+    await check('phase 2: no console errors', async () => assert.deepEqual(errorsOf(await page.evaluate(() => window.__logs)), []));
+    await page.close();
+}
+
+// 3. Legacy engine
 {
     const { page } = await open('?ext=SillyTavern-RuInflect&legacy=1');
     await check('legacy: flat macros', async () => {
@@ -131,7 +202,7 @@ async function check(name, fn) {
     await page.close();
 }
 
-// 3. With RuMorph
+// 4. With RuMorph
 {
     const label = 'with RuMorph';
     const s2 = await start();
